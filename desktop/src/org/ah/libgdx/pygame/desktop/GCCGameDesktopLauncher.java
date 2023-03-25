@@ -36,7 +36,7 @@ public class GCCGameDesktopLauncher {
             pythonFilename = arg[0];
         }
 
-        final String gameDir;
+        String gameDir;
         int i = pythonFilename.lastIndexOf("/");
         if (i > 0) {
             gameDir = pythonFilename.substring(0, i + 1);
@@ -49,14 +49,12 @@ public class GCCGameDesktopLauncher {
             pythonFilename = pythonFilename.substring(0, pythonFilename.length() - 3);
         }
 
-        ModuleLoader moduleLoader = new ModuleLoader() {
-            @Override public String loadModule(String moduleName) throws IOException {
-                String pythonFilename = gameDir + moduleName.replace(".", "/") + ".py";
-                return GDXUtil.loadString(new InputStreamReader(Thread.currentThread().getContextClassLoader().getResource(pythonFilename).openStream()));
-            }
+        ModuleLoader moduleLoader = new ModuleLoader(gameDir) {
 
-            @Override public String getPathPrefix() {
-                return gameDir;
+            @Override
+            protected String loadModuleSourceCodeFromName(String moduleName) throws IOException {
+              String pythonFilename = gameDir + moduleName.replace(".", "/") + ".py";
+              return GDXUtil.loadString(new InputStreamReader(Thread.currentThread().getContextClassLoader().getResource(pythonFilename).openStream()));
             }
         };
 
