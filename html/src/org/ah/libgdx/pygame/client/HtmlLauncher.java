@@ -1,140 +1,116 @@
 package org.ah.libgdx.pygame.client;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 import org.ah.libgdx.pygame.PyGameLibGDX;
 import org.ah.libgdx.pygame.python.CreateApplicationUtil;
-import org.ah.python.modules.BuiltInFunctions;
+import org.ah.libgdx.pygame.utils.GDXUtil;
+import org.ah.python.interpreter.ModuleLoader;
 
 import com.badlogic.gdx.ApplicationListener;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.backends.gwt.GwtApplication;
 import com.badlogic.gdx.backends.gwt.GwtApplicationConfiguration;
+import com.badlogic.gdx.files.FileHandle;
 import com.google.gwt.core.client.GWT;
-import com.google.gwt.http.client.Request;
-import com.google.gwt.http.client.RequestBuilder;
-import com.google.gwt.http.client.RequestCallback;
-import com.google.gwt.http.client.RequestException;
-import com.google.gwt.http.client.Response;
 import com.google.gwt.user.client.Window;
+import com.google.gwt.user.client.ui.Panel;
 
 public class HtmlLauncher extends GwtApplication {
-
-//    @Override
-//    public GwtApplicationConfiguration getConfig() {
-//        return new GwtApplicationConfiguration(480, 320);
-//    }
-//
-//    @Override
-//    public ApplicationListener getApplicationListener() {
-//        return new PyGameLibGDX();
-//    }
-    ApplicationListener application;
-
-    String prefix = "games/chris-bot-escape/";
-
-    int width = 1024;
-    int height = 768;
 
     @Override
     public GwtApplicationConfiguration getConfig() {
 
-        GwtApplicationConfiguration cfg = new GwtApplicationConfiguration(width, height);
+        GwtApplicationConfiguration cfg = new GwtApplicationConfiguration(1024, 768);
         return cfg;
     }
 
     public String getPathPrefix() {
-//        String p = GWT.getModuleBaseURL();
-//        error("here", "getModuleBaseURL: " + GWT.getModuleBaseURL());
-//        error("here", "getHostPageBaseURL: " + GWT.getHostPageBaseURL());
         String p = Window.Location.getHash();
         consoleLog("Window.Location.getHash()=" + p);
-        consoleLog("prefix=" + prefix);
         if (p.startsWith("#")) {
             p = p.substring(1);
             if (!p.endsWith("/")) { p = p + "/"; }
         } else {
             p = "";
         }
-//        error("here", "" + p);
-//        System.out.println(p);
         return p;
     }
 
     @Override
     public ApplicationListener createApplicationListener () {
-        return application;
-    }
+        ApplicationListener applicationListener = new ApplicationListener() {
+            PyGameLibGDX game;
 
-    protected void callSuperOnModuleLoad() {
-        consoleLog("calling super.onModuleLoad()");
-        try {
-            super.onModuleLoad();
-        } catch (Throwable t) {
-            consoleLog("Got exception t = " + t.getMessage());
-        }
-        consoleLog("finished super.onModuleLoad()");
-    }
+            @Override
+            public void create() {
+                String pythonFileName = "game.py";
+                if (pythonFileName.endsWith(".py")) {
+                    pythonFileName = pythonFileName.substring(0, pythonFileName.length() - 3);
+                }
 
-    @Override
-    public String getPreloaderBaseURL()
-    {
-            return GWT.getHostPageBaseURL() + getPathPrefix() + "assets/";
-    }
+                consoleLog("Loading "+ "assets/" + pythonFileName);
+                final String gameDir = "";
 
+                ModuleLoader moduleLoader = new ModuleLoader(gameDir) {
+                    @Override
+                    protected String loadModuleSourceCodeFromName(String moduleName) throws IOException {
+                      String pythonFilename = gameDir + moduleName.replace(".", "/") + ".py";
+                      consoleLog("pythonFilename=" + pythonFilename);
+                      FileHandle handle = Gdx.files.internal(pythonFilename);
+                      return GDXUtil.loadString(new InputStreamReader(handle.read()));
+                    }
+                };
 
-    @Override
-    public void onModuleLoad () {
-        setLogLevel(LOG_DEBUG);
-//        String pythonFileName = "shootingGame/ShootingGame.py";
-//        String pythonFileName = "gcc/MazeWithFunctions.py";
-//        String pythonFileName = "MazeFinal.py";
-//        String pythonFileName = "CaveQuest/maze.py";
-//        String pythonFileName = "game-of-circles/maze.py";
-//        String pythonFileName = "jonathan-phillips/Maze.py";
-//        String pythonFileName = "flappy-bird/Flappy-Bird.py";
-//        String pythonFileName = "guns-kills-people!!/JetPack.py";
-        String pythonFileName = "game.py";
-//        log("Something:", "something x");
-
-
-        try {
-            int i = pythonFileName.indexOf('/');
-            final String path = pythonFileName.substring(0, i);
-            // final String fileName = pythonFileName.substring(i + 1);
-            consoleLog("Loading "+ "assets/" + pythonFileName);
-            new RequestBuilder(RequestBuilder.GET, getPathPrefix() + "assets/" + pythonFileName).sendRequest("", new RequestCallback() {
-
-                @Override
-                public void onResponseReceived(Request request, Response response) {
-
-                    BuiltInFunctions.printInterface = new BuiltInFunctions.PrintInterface() {
-                        @Override
-                        public void print(String s) {
-                            log("x", s);
-                        }
-                    };
-
-                    String pythonCode = response.getText();
-                    PyGameLibGDX game = CreateApplicationUtil.createApplication(path, pythonCode);
-                    width = game.getWidth();
-                    height = game.getHeight();
+                try {
+                    this.game = CreateApplicationUtil.createApplication(pythonFileName, moduleLoader);
+                    int width = game.getWidth();
+                    int height = game.getHeight();
                     consoleLog("Got dimensions [" +  width + "," + height + "]");
-                    application = game;
+                    Gdx.graphics.setWindowedMode(width, height);
+                    Panel rootPanel = getRootPanel();
+                    rootPanel.setWidth("" + width + "px");
+                    rootPanel.setHeight("" + height + "px");
 
-                    consoleLog("callSuperOnModuleLoad");
-                    callSuperOnModuleLoad();
-                    consoleLog("url=" + Window.Location.getHash());
-//                    log("x", "url");
-//                    log("x", "url=" + Window.Location.getHash());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
 
-                @Override
-                public void onError(Request request, Throwable exception) {
-                    consoleLog(exception.getMessage());
-                    // TODO Auto-generated method stub
-                }
-            });
-        } catch (RequestException e) {
-            consoleLog("RequestException " + e.getMessage());
-            // TODO Auto-generated catch block
-        }
+                game.create();
+            }
+
+            @Override
+            public void resize(int width, int height) {
+                game.resize(width, height);
+            }
+
+            @Override
+            public void render() {
+                game.render();
+            }
+
+            @Override
+            public void pause() {
+                game.render();
+            }
+
+            @Override
+            public void resume() {
+                game.resume();
+            }
+
+            @Override
+            public void dispose() {
+                game.dispose();
+            }
+
+        };
+        return applicationListener;
+    }
+
+    @Override
+    public String getPreloaderBaseURL() {
+        return GWT.getHostPageBaseURL() + getPathPrefix() + "assets/";
     }
 }
