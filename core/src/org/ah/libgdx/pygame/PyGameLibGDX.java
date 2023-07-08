@@ -1,33 +1,27 @@
 package org.ah.libgdx.pygame;
 
+import static org.ah.python.interpreter.PythonBoolean.FALSE;
+import static org.ah.python.interpreter.PythonBoolean.TRUE;
+
+import org.ah.libgdx.pygame.modules.pygame.PyGameDisplay;
+import org.ah.libgdx.pygame.modules.pygame.PyGameDisplay.WindowSizeCallback;
+import org.ah.libgdx.pygame.modules.pygame.PyGameModule;
+import org.ah.libgdx.pygame.python.Modules;
+import org.ah.python.interpreter.Module;
+import org.ah.python.interpreter.ThreadContext;
+import org.ah.python.interpreter.ThreadContext.Executable;
+
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 
-import org.ah.libgdx.pygame.modules.pygame.PyGameModule;
-import org.ah.libgdx.pygame.python.Modules;
-import org.ah.libgdx.pygame.utils.GDXUtil;
-import org.ah.python.grammar.PythonParser;
-import org.ah.python.grammar.PythonScannerFixed;
-import org.ah.python.interpreter.GlobalScope;
-import org.ah.python.interpreter.Module;
-import org.ah.python.interpreter.PythonObject;
-import org.ah.python.interpreter.PythonString;
-import org.ah.python.interpreter.Suite;
-import org.ah.python.interpreter.While;
-
-import java.io.StringReader;
-import java.util.List;
-
-import static org.ah.python.interpreter.PythonBoolean.FALSE;
-import static org.ah.python.interpreter.PythonBoolean.TRUE;
-
-public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
+public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, WindowSizeCallback {
 
     private Rectangle screenRect;
     private OrthographicCamera camera;
@@ -35,37 +29,44 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
 
-    private Suite mainLoop;
+    private ThreadContext context;
 
     private Module module;
-//    private String pythonFileName;
     private String path;
 
     protected boolean startGame;
 
-//    private String pythonCode;
     private int width = 1024;
-    private int height = 768;
+    private int height = 256;
 
     public PyGameLibGDX(String path, Module module) {
         this.path = path;
         this.module = module;
 
-//        PythonObject source = module.__getitem__(PythonString.valueOf("__sourcecode__"));
-//        if (source != null) {
-//            pythonCode = source.asString();
+        PyGameModule.PYGAME_MODULE.setPath(path);
+
+        context = new ThreadContext(module);
+        context.setCurrentScope(module);
+        context.continuation(module.getBlock());
+//        PyGameModule.PRE_RUN = true;
+//
+//        try {
+//            boolean eof = false;
+//            while (!eof && PyGameModule.DISPLAY_WIDTH == 0) {
+//                if (context.pcStack.isEmpty()) {
+//                    eof = true;
+//                }
+//
+//                Executable pc = context.pcStack.pop();
+//                pc.evaluate(context);
+//            }
+//            width = PyGameModule.DISPLAY_WIDTH;
+//            height = PyGameModule.DISPLAY_HEIGHT;
+//            // PyGameModule.PRE_RUN = false;
+//        } catch (Exception e) {
+//            throw new RuntimeException(context.position() + e.getMessage(), e);
 //        }
     }
-
-//    public PyGameLibGDX(String pythonFileName) {
-//        int i = pythonFileName.indexOf('/');
-//        if (i < 0) {
-//            path = "";
-//        } else {
-//            this.path = pythonFileName.substring(0, i);
-//        }
-//        this.pythonFileName = pythonFileName;
-//    }
 
     public void setModule(Module module) {
         this.module = module;
@@ -73,10 +74,14 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
 
     @Override
     public void create() {
-        screenRect = new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        // screenRect = new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        camera = new OrthographicCamera(screenRect.width, screenRect.height);
+        int width = Gdx.graphics.getWidth();
+        int height = Gdx.graphics.getHeight();
+
+        camera = new OrthographicCamera(width, height);
         camera.setToOrtho(true);
+        camera.position.set(width / 2, height / 2, 0);
         camera.update();
 
         batch = new SpriteBatch();
@@ -91,34 +96,12 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
             Modules.init();
         }
 
+        PyGameDisplay.windowSizeCallback = this;
         PyGameModule.PYGAME_MODULE.setSpriteBatch(batch);
         PyGameModule.PYGAME_MODULE.setShapeRenderer(shapeRenderer);
         PyGameModule.PYGAME_MODULE.setFont(font);
         PyGameModule.PYGAME_MODULE.setCamera(camera);
-        PyGameModule.PYGAME_MODULE.setPath(path);
-
-//        if (module == null) {
-//            pythonCode = GDXUtil.loadString(Gdx.files.internal(pythonFileName));
-//
-//            PythonScannerFixed scanner = new PythonScannerFixed(new StringReader(pythonCode));
-//            PythonParser parser = new PythonParser(scanner);
-//
-//            parser.next();
-//            parser.file_input();
-//
-//            module = parser.getModule();
-//        }
-
-        List<PythonObject> body = module.getSuite().asList();
-
-        While whle = (While)body.get(body.size() - 1);
-
-        body.remove(body.size() - 1);
-
-        mainLoop = whle.getBody();
-
-        module.__call__();
-        GlobalScope.pushScope(module);
+        PyGameModule.PRE_RUN = false;
     }
 
     @Override
@@ -132,19 +115,49 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
         batch.setProjectionMatrix(camera.combined);
 
         if (!PyGameModule.ENABLE_SHAPE_RENDERER) {
-//            shapeRenderer.begin(ShapeType.Line);
+            // shapeRenderer.begin(ShapeType.Line);
             batch.begin();
         }
-        mainLoop.__call__();
+
+        try {
+            PyGameModule.flip = false;
+            boolean eof = false;
+            while (!eof && !PyGameModule.flip) {
+                if (context.pcStack.isEmpty()) {
+                    eof = true;
+                }
+
+                Executable pc = context.pcStack.pop();
+                pc.evaluate(context);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(context.position() + e.getMessage(), e);
+        }
+
         if (!PyGameModule.ENABLE_SHAPE_RENDERER) {
-//            shapeRenderer.end();
+            // shapeRenderer.end();
             batch.end();
         }
         PyGameModule.getPyGameEvent().getEvents().clear();
+        PyGameModule.flip = false;
     }
 
     @Override
     public void resize(int width, int height) {
+        HdpiUtils.glViewport(0, 0, width, height);
+
+        // camera.setToOrtho(true, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+//        camera.viewportWidth = width / 2;
+//        camera.viewportHeight = height / 2;
+        camera.setToOrtho(true, width, height);
+//        camera.position.set(width / 2, height / 2, 0);
+//        camera.update();
+//        screenRect = new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+//
+//        camera = new OrthographicCamera(screenRect.width, screenRect.height);
+//        camera.setToOrtho(true);
+//        camera.update();
+//        PyGameModule.PYGAME_MODULE.setCamera(camera);
     }
 
     @Override
@@ -157,14 +170,12 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
-//        PyGameModule.KEYS.asList().set(keycode, TRUE);
         PyGameModule.KEYS[keycode] = TRUE;
         return false;
     }
 
     @Override
     public boolean keyUp(int keycode) {
-//        PyGameModule.KEYS.asList().set(keycode, FALSE);
         PyGameModule.KEYS[keycode] = FALSE;
         return false;
     }
@@ -246,14 +257,9 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
         PyGameModule.getPyGameEvent().addMouseMotion(screenX, screenY);
         return false;
     }
-//
-//    public void setPythonFileName(String pythonFileName) {
-//        this.pythonFileName = pythonFileName;
-//    }
 
     @Override
     public boolean scrolled(float amountX, float amountY) {
-        // TODO Auto-generated method stub
         return false;
     }
 
@@ -264,4 +270,8 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor {
     public int getHeight() { return this.height; }
     public void setHeight(int height) { this.height = height; }
 
+    @Override
+    public void setSize(int width, int height) {
+        Gdx.graphics.setWindowedMode(width, height);
+    }
 }

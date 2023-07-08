@@ -67,13 +67,16 @@ public class HtmlLauncher extends GwtApplication {
                     this.game = CreateApplicationUtil.createApplication(pythonFileName, moduleLoader);
                     int width = game.getWidth();
                     int height = game.getHeight();
-                    consoleLog("Got dimensions [" +  width + "," + height + "]");
+                    consoleLog("Got dimensions as [" +  width + "," + height + "]");
                     Gdx.graphics.setWindowedMode(width, height);
+                    consoleLog("Setting size..");
                     Panel rootPanel = getRootPanel();
+                    consoleLog("Setting size....");
                     rootPanel.setWidth("" + width + "px");
                     rootPanel.setHeight("" + height + "px");
-
+                    consoleLog("Set size.");
                 } catch (IOException e) {
+                    consoleLog("Got exception " + e);
                     throw new RuntimeException(e);
                 }
 

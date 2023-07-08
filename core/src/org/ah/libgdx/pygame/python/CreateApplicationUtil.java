@@ -3,7 +3,6 @@ package org.ah.libgdx.pygame.python;
 import java.io.IOException;
 
 import org.ah.libgdx.pygame.PyGameLibGDX;
-import org.ah.libgdx.pygame.modules.pygame.PyGameModule;
 import org.ah.python.interpreter.GlobalScope;
 import org.ah.python.interpreter.Module;
 import org.ah.python.interpreter.ModuleLoader;
@@ -20,16 +19,16 @@ public class CreateApplicationUtil {
         int h = 0;
         boolean hasSize = false;
 
-        PyGameModule.PRE_RUN = true;
-        try {
-            module.__call__();
-        } catch (PyGameModule.PyGamePreRunException e) {
-            w = e.getWidth();
-            h = e.getHeight();
-            hasSize = true;
-        } finally {
-            PyGameModule.PRE_RUN = false;
-        }
+//        PyGameModule.PRE_RUN = true;
+//        try {
+//            module.__call__();
+//        } catch (PyGameModule.PyGamePreRunException e) {
+//            w = e.getWidth();
+//            h = e.getHeight();
+//            hasSize = true;
+//        } finally {
+//            PyGameModule.PRE_RUN = false;
+//        }
 
         PyGameLibGDX application = new PyGameLibGDX(moduleLoader.getPathPrefix(), module);
         if (hasSize) {
