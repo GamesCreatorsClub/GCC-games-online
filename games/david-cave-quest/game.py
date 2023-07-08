@@ -97,6 +97,8 @@ lavaList = []
 flash_waiter = 210
 flash_on = True
 
+move_rect = None
+
 music = pygame.mixer.Sound("game_data/background-music.wav")
 # sound: musicLength = music.get_length() * 1000
 # sound: musicStarted = - musicLength
@@ -426,7 +428,7 @@ def DrawPlayer(player):
         screen.blit(player['images'][image_index], player['rect'])
 
 def UpdatePlayerPosition():
-    global fallingSpeed, jumpingTime, key, bridgePlankList, marbleList
+    global fallingSpeed, jumpingTime, key, bridgePlankList, marbleList, move_rect
     # key = pygame.key.get_pressed()
 
     move_rect[0] = player['rect'][0] + x_margin
