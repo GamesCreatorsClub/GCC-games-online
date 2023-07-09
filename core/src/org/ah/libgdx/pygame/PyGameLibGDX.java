@@ -1,8 +1,5 @@
 package org.ah.libgdx.pygame;
 
-import static org.ah.python.interpreter.PythonBoolean.FALSE;
-import static org.ah.python.interpreter.PythonBoolean.TRUE;
-
 import org.ah.libgdx.pygame.modules.pygame.PyGameDisplay;
 import org.ah.libgdx.pygame.modules.pygame.PyGameDisplay.WindowSizeCallback;
 import org.ah.libgdx.pygame.modules.pygame.PyGameModule;
@@ -19,11 +16,9 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Rectangle;
 
 public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, WindowSizeCallback {
 
-    private Rectangle screenRect;
     private OrthographicCamera camera;
     private SpriteBatch batch;
     private ShapeRenderer shapeRenderer;
@@ -32,6 +27,8 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
     private ThreadContext context;
 
     private Module module;
+
+    @SuppressWarnings("unused")
     private String path;
 
     protected boolean startGame;
@@ -48,24 +45,6 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
         context = new ThreadContext(module);
         context.setCurrentScope(module);
         context.continuation(module.getBlock());
-//        PyGameModule.PRE_RUN = true;
-//
-//        try {
-//            boolean eof = false;
-//            while (!eof && PyGameModule.DISPLAY_WIDTH == 0) {
-//                if (context.pcStack.isEmpty()) {
-//                    eof = true;
-//                }
-//
-//                Executable pc = context.pcStack.pop();
-//                pc.evaluate(context);
-//            }
-//            width = PyGameModule.DISPLAY_WIDTH;
-//            height = PyGameModule.DISPLAY_HEIGHT;
-//            // PyGameModule.PRE_RUN = false;
-//        } catch (Exception e) {
-//            throw new RuntimeException(context.position() + e.getMessage(), e);
-//        }
     }
 
     public void setModule(Module module) {
@@ -74,8 +53,6 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
 
     @Override
     public void create() {
-        // screenRect = new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-
         int width = Gdx.graphics.getWidth();
         int height = Gdx.graphics.getHeight();
 
@@ -146,18 +123,7 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
     public void resize(int width, int height) {
         HdpiUtils.glViewport(0, 0, width, height);
 
-        // camera.setToOrtho(true, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-//        camera.viewportWidth = width / 2;
-//        camera.viewportHeight = height / 2;
         camera.setToOrtho(true, width, height);
-//        camera.position.set(width / 2, height / 2, 0);
-//        camera.update();
-//        screenRect = new Rectangle(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-//
-//        camera = new OrthographicCamera(screenRect.width, screenRect.height);
-//        camera.setToOrtho(true);
-//        camera.update();
-//        PyGameModule.PYGAME_MODULE.setCamera(camera);
     }
 
     @Override
@@ -170,13 +136,13 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
 
     @Override
     public boolean keyDown(int keycode) {
-        PyGameModule.KEYS[keycode] = TRUE;
+        PyGameModule.keyDown(keycode);
         return false;
     }
 
     @Override
     public boolean keyUp(int keycode) {
-        PyGameModule.KEYS[keycode] = FALSE;
+        PyGameModule.keyUp(keycode);
         return false;
     }
 
@@ -232,18 +198,12 @@ public class PyGameLibGDX extends ApplicationAdapter implements InputProcessor, 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         PyGameModule.getPyGameEvent().addMouseDown(screenX, screenY);
-        // processKeys(screenX, screenY);
         return false;
     }
 
     @Override
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
         PyGameModule.getPyGameEvent().addMouseUp(screenX, screenY);
-        //        PyGameModule.KEYS.asList().set(Keys.LEFT, FALSE);
-        //        PyGameModule.KEYS.asList().set(Keys.RIGHT, FALSE);
-        //        PyGameModule.KEYS.asList().set(Keys.UP, FALSE);
-        //        PyGameModule.KEYS.asList().set(Keys.DOWN, FALSE);
-        //        PyGameModule.KEYS.asList().set(Keys.ENTER, FALSE);
         return false;
     }
 
